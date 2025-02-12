@@ -1,0 +1,85 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from keras import Sequential
+from keras.datasets import mnist # type: ignore
+from keras.layers import Dense # type: ignore
+from keras.utils import to_categorical # type: ignore
+
+# Load dataset
+(train_images, train_labels), (test_images, test_labels) = mnist.load_data()
+
+# Display one image from test set
+plt.imshow(test_images[0], cmap='gray')
+plt.title(f'Actual Label: {test_labels[0]}')
+plt.show()
+
+# Process the data
+dimData = np.prod(train_images.shape[1:])
+train_data = train_images.reshape(train_images.shape[0], dimData)
+test_data = test_images.reshape(test_images.shape[0], dimData)
+
+# Convert data to float and scale values between 0 and 1
+train_data = train_data.astype('float') / 255.0
+test_data = test_data.astype('float') / 255.0
+
+# Convert labels to one-hot encoding
+train_labels_one_hot = to_categorical(train_labels)
+test_labels_one_hot = to_categorical(test_labels)
+
+# Creating network with different activation functions
+model = Sequential()
+model.add(Dense(512, activation='tanh', input_shape=(dimData,)))
+model.add(Dense(512, activation='tanh'))
+model.add(Dense(10, activation='softmax'))
+
+# Compile model
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train model
+history = model.fit(train_data, train_labels_one_hot, batch_size=256, epochs=10, verbose=1,
+                    validation_data=(test_data, test_labels_one_hot))
+
+# Plot training history
+plt.figure(figsize=(12, 5))
+
+# Plot accuracy
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.title('Training and Validation Accuracy')
+
+# Plot loss
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.title('Training and Validation Loss')
+plt.show()
+
+# Inferencing on a single image
+sample_image = test_data[0].reshape(1, dimData)
+prediction = np.argmax(model.predict(sample_image))
+print(f'Model Prediction: {prediction}')
+
+# Run without scaling
+train_data_unscaled = train_images.reshape(train_images.shape[0], dimData).astype('float')
+test_data_unscaled = test_images.reshape(test_images.shape[0], dimData).astype('float')
+
+model_unscaled = Sequential()
+model_unscaled.add(Dense(512, activation='relu', input_shape=(dimData,)))
+model_unscaled.add(Dense(512, activation='relu'))
+model_unscaled.add(Dense(10, activation='softmax'))
+
+model_unscaled.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+
+history_unscaled = model_unscaled.fit(train_data_unscaled, train_labels_one_hot, batch_size=256, epochs=10, verbose=1,
+                                      validation_data=(test_data_unscaled, test_labels_one_hot))
+
+# Compare accuracy with and without scaling
+print(f"Final accuracy with scaling: {history.history['val_accuracy'][-1] * 100:.2f}%")
+print(f"Final accuracy without scaling: {history_unscaled.history['val_accuracy'][-1] * 100:.2f}%")
